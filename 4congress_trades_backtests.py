@@ -34,7 +34,7 @@ import glob
 
 files = glob.glob('*.csv')
 files = sorted(files,
-               key=os.path.getmtime
+               key=os.path.getmtime,
                reverse=True)
 df = pd.read_csv(files[0])
 df['Ticker'] = df['Ticker'].str.replace(':US', '')
