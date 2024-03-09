@@ -241,6 +241,3 @@ for i in range(0, len(imagelist)):
   pdf.image(imagelist[i], w=170)
 file_name = f"{today_str}_insider_trading_copying.pdf"
 pdf.output(file_name, "F")
-
-from google.colab import files
-files.download(file_name)
