@@ -15,7 +15,7 @@ warnings.simplefilter('ignore')
 
 #importing neccesary modules
 from datetime import datetime
-import sys
+import os,sys
 import pandas as pd
 import pandas_ta as ta
 import numpy as np
@@ -33,6 +33,9 @@ import yfinance as yf
 import glob
 
 files = glob.glob('*.csv')
+files = sorted(files,
+               key=os.path.getmtime
+               reverse=True)
 df = pd.read_csv(files[0])
 df['Ticker'] = df['Ticker'].str.replace(':US', '')
 df = df.dropna(subset=['Ticker'])
