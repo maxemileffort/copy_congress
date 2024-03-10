@@ -1,4 +1,5 @@
 import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
@@ -6,13 +7,19 @@ from selenium.webdriver.chrome.options import Options
 import glob, os, time, sys
 from fpdf import FPDF
 from datetime import datetime
+from PIL import Image
+
+def load_and_convert_image(image_path):
+    """Load an image and convert it to RGB."""
+    img = Image.open(image_path)
+    return img.convert('RGB')
 
 def setup_driver():
     """Sets up headless Chrome WebDriver."""
-    # chrome_options = Options()
-    # chrome_options.add_argument("--headless")
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
     service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service)
+    driver = webdriver.Chrome(service=service, options=chrome_options)
     return driver
 
 # Function to process each image
