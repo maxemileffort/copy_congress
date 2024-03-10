@@ -26,8 +26,8 @@ root = tk.Tk()
 root.title("Script Runner")
 
 # Create the output box
-output_box = scrolledtext.ScrolledText(root, width=50, height=10)
-output_box.grid(row=0, column=0, columnspan=5)
+output_box = scrolledtext.ScrolledText(root, width=60, height=10)
+output_box.grid(row=0, column=0, columnspan=6)
 
 # Create buttons for running scripts
 button1 = tk.Button(root, text="Scrape", command=lambda: create_thread("1scrape_site.py"))
@@ -42,8 +42,11 @@ button3.grid(row=1, column=2)
 button3 = tk.Button(root, text="Backtest", command=lambda: create_thread("4congress_trades_backtests.py"))
 button3.grid(row=1, column=3)
 
+button3 = tk.Button(root, text="Document", command=lambda: create_thread("5create_pdf.py"))
+button3.grid(row=1, column=4)
+
 # Create a close button
 close_button = tk.Button(root, text="Close", command=root.destroy)
-close_button.grid(row=1, column=4)
+close_button.grid(row=1, column=5)
 
 root.mainloop()

@@ -1,3 +1,6 @@
 *.csv 
 *.txt
+*.html
+*.png
+*.pdf
 !requirements.txt

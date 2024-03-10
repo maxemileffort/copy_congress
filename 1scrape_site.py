@@ -1,12 +1,15 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
 from datetime import datetime
 import time
 
 # Setup ChromeDriver (make sure it's installed and in PATH)
+chrome_options = Options()
+chrome_options.add_argument("--headless")
 service = Service(ChromeDriverManager().install())
-driver = webdriver.Chrome(service=service)
+driver = webdriver.Chrome(service=service, options=chrome_options)
 
 base_url = ('https://www.capitoltrades.com/trades?per_page=96'
             + '&assetType=crypto&assetType=etf&assetType=etn&'
@@ -18,9 +21,12 @@ base_url = ('https://www.capitoltrades.com/trades?per_page=96'
             + '&assetType=stock&assetType=stock-options')
 
 html = ''
-for x in range(1, 21):
+for x in range(1, 41):
     # Navigate to the URL
-    driver.get(f'{base_url}&page={x}')
+    if x == 1:
+        driver.get(f'{base_url}')
+    else:
+        driver.get(f'{base_url}&page={x}')
     
     # Optional: Wait for dynamic content to load
     time.sleep(5)

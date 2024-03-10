@@ -19,10 +19,6 @@ import os,sys
 import pandas as pd
 import pandas_ta as ta
 import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-plt.style.use('seaborn-whitegrid')
-import seaborn as sns
 
 from backtesting import Backtest, Strategy
 
@@ -32,6 +28,12 @@ import yfinance as yf
 
 import glob
 
+start_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+old_html_files = glob.glob('*.html')
+for f in old_html_files:
+   os.remove(f)
+
 files = glob.glob('*.csv')
 files = sorted(files,
                key=os.path.getmtime,
@@ -39,10 +41,8 @@ files = sorted(files,
 df = pd.read_csv(files[0])
 df['Ticker'] = df['Ticker'].str.replace(':US', '')
 df = df.dropna(subset=['Ticker'])
-df['TradeDate_dt'] = pd.to_datetime(df['TradeDate_dt'])
-df['PubDate_dt'] = pd.to_datetime(df['PubDate_dt'])
-
-df.head(3)
+df['TradeDate_dt'] = pd.to_datetime(df['TradeDate_dt']).dt.date
+df['PubDate_dt'] = pd.to_datetime(df['PubDate_dt']).dt.date
 
 for t in df['Politician'].unique():
   print(t)
@@ -61,7 +61,8 @@ def fetch_historical_data(tickers, start_date, end_date):
     data = yf.download(tickers_str,
                        start=start_date,
                        end=end_date,
-                       group_by='ticker')
+                       group_by='ticker',
+                       ignore_tz=True)
     return data
 
 # Filter out rows with NaN in 'Ticker' column and prepare a list of unique tickers
@@ -91,11 +92,12 @@ class CongressTradesStrategy1(Strategy):
 bts = [] # for visualizing later
 res_df = pd.DataFrame()
 for i in unique_insiders:
-  print(i)
+  # print(i)
   sub_df = df.loc[df['Politician']==i]
   insiders_tickers = sub_df['Ticker'].unique()
 
   for t in insiders_tickers:
+    # print(t)
     t = t.replace('$ETH', 'ETH-USD')
     t = t.replace('$BTC', 'BTC-USD')
     t = t.replace('$LTC', 'LTC-USD')
@@ -106,6 +108,7 @@ for i in unique_insiders:
       print(f'cannot find {t} ticker.')
       continue
     prices['index'] = prices.index
+    prices['index'] = pd.to_datetime(prices['index']).dt.date
     data_with_sig = prices.merge(sub_df2,
                                   right_on=['TradeDate_dt'],
                                   left_on=['index'],
@@ -139,7 +142,7 @@ group_df['Start Amount'] = group_df['Ticker'] * 10*1000
 return_num = (group_df['Equity Final [$]'] - group_df['Start Amount'])
 group_df['Return'] = return_num / group_df['Start Amount']
 group_df = group_df.sort_values('Return', ascending=False)
-group_df
+group_df.to_csv(f'{end_date}_trade_dt_stats.csv')
 
 # Define your backtesting strategy
 class CongressTradesStrategy2(Strategy):
@@ -159,7 +162,7 @@ class CongressTradesStrategy2(Strategy):
 bts2 = [] # for visualizing later
 res_df2 = pd.DataFrame()
 for i in unique_insiders:
-  print(i)
+  # print(i)
   sub_df = df.loc[df['Politician']==i]
   insiders_tickers = sub_df['Ticker'].unique()
 
@@ -174,6 +177,7 @@ for i in unique_insiders:
       print(f'cannot find {t} ticker.')
       continue
     prices['index'] = prices.index
+    prices['index'] = pd.to_datetime(prices['index']).dt.date
     data_with_sig = prices.merge(sub_df2,
                                   right_on=['PubDate_dt'],
                                   left_on=['index'],
@@ -207,7 +211,7 @@ group_df2['Start Amount'] = group_df2['Ticker'] * 10*1000
 return_num = (group_df2['Equity Final [$]'] - group_df2['Start Amount'])
 group_df2['Return'] = return_num / group_df2['Start Amount']
 group_df2 = group_df2.sort_values('Return', ascending=False)
-group_df2
+group_df2.to_csv(f'{end_date}_pub_dt_stats.csv')
 
 """# Visualize Backtest Results"""
 
@@ -215,7 +219,8 @@ for bt in bts:
   print(bt[1] + " : " + bt[2])
   print('=====')
   try:
-    bt[0].plot()
+    bt[0].plot(filename=f'html/{bt[1]} {bt[2]}_trade_dates.html', 
+               open_browser=False)
   except ValueError as ve:
     print(f'value error: {ve}')
   print('=====')
@@ -224,23 +229,13 @@ for bt in bts2:
   print(bt[1] + " : " + bt[2])
   print('=====')
   try:
-    fig = bt[0].plot()
-    fig.savefing(f'{bt[1]} {bt[2]}.png')
+    bt[0].plot(filename=f'html/{bt[1]} {bt[2]}_pub_dates.html', 
+               open_browser=False)
   except ValueError as ve:
     print(f'value error: {ve}')
   print('=====')
 
-from datetime import datetime
+end_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-today_str = datetime.today().strftime('%Y-%m-%d')
-
-from fpdf import FPDF #
-
-imagelist = sorted(glob.glob(f'*.png'))
-
-pdf = FPDF()
-for i in range(0, len(imagelist)):
-  pdf.add_page()
-  pdf.image(imagelist[i], w=170)
-file_name = f"{today_str}_insider_trading_copying.pdf"
-pdf.output(file_name, "F")
+print('start_time: ',start_time)
+print('end_time: ',end_time)
