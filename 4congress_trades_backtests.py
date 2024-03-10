@@ -147,44 +147,6 @@ for i in unique_insiders:
     res2['Ticker'] = t
     res_df2 = pd.concat([res_df2,res2])
 
-for i in unique_insiders:
-  # print(i)
-  sub_df = df.loc[df['Politician']==i]
-  insiders_tickers = sub_df['Ticker'].unique()
-
-  for t in insiders_tickers:
-    t = t.replace('$ETH', 'ETH-USD')
-    t = t.replace('$BTC', 'BTC-USD')
-    t = t.replace('$LTC', 'LTC-USD')
-    sub_df2 = sub_df.loc[sub_df['Ticker']==t]
-    try:
-      prices = historical_data[t]
-    except KeyError:
-      print(f'cannot find {t} ticker.')
-      continue
-    prices['index'] = prices.index
-    prices['index'] = pd.to_datetime(prices['index']).dt.date
-    data_with_sig = prices.merge(sub_df2,
-                                  right_on=['PubDate_dt'],
-                                  left_on=['index'],
-                                  how='outer')
-    data_with_sig = data_with_sig.set_index('index')
-    data_with_sig['PubDate_dt'] = data_with_sig['PubDate_dt'].fillna(datetime.today())
-    data_with_sig = data_with_sig.loc[data_with_sig['Open'].notna()]
-    # print(data_with_sig)
-    # Run backtest
-    try:
-      bt = Backtest(data_with_sig, CongressTradesStrategy1, cash=10000, commission=.002)
-    except ValueError as ve:
-      print(f'value error: {ve}')
-      continue
-    results = bt.run()
-    bts2.append([bt, i, t])
-    res2 = pd.DataFrame(results).T
-    res2['Politician'] = i
-    res2['Ticker'] = t
-    res_df2 = pd.concat([res_df2,res2])
-
 """## Results Table 1"""
 
 group_df = res_df.groupby(['Politician']).agg({
