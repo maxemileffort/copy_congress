@@ -4,15 +4,45 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
-import glob, os, time, sys
-from fpdf import FPDF
+import glob, os, time
 from datetime import datetime
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 def load_and_convert_image(image_path):
-    """Load an image and convert it to RGB."""
-    img = Image.open(image_path)
-    return img.convert('RGB')
+    """Load an image, convert it to RGB, and add a watermark in the bottom right corner."""
+    watermark = os.path.splitext(os.path.basename(image_path))[0]
+    with Image.open(image_path) as img:
+
+        # Get the width and height of the image
+        img_width, img_height = img.size
+
+        # Preparing the text watermark (Change the color in the last parameter below)
+        txt = Image.new("RGBA", img.size, (100, 100, 100, 0))
+    
+        # Create a drawing context
+        draw = ImageDraw.Draw(txt)
+
+        # Specify the font and size for the watermark
+        # You might need to adjust the path to a font file and font size depending on your setup
+        font = ImageFont.truetype("arial.ttf", 14)
+        
+        # Get the width and height of the text
+        _, _, w, h = draw.textbbox((0, 0), watermark, font=font)
+
+        # Position for the watermark (bottom right corner with a small margin)
+        x = img_width - w - 10
+        y = img_height - h - 10
+        
+        # Make the text written into center
+        draw.text((x, y), 
+                  watermark, 
+                  font=font, 
+                  fill=(100, 100, 100, 255))
+    
+        # Combine the image with text watermark
+        out = Image.alpha_composite(img, txt)
+        
+    return out
 
 def setup_driver():
     """Sets up headless Chrome WebDriver."""
@@ -33,14 +63,14 @@ def convert_html_to_png(html_file, output_file):
     driver = setup_driver()
     try:
         driver.get(f"file:///{html_file}")
-        time.sleep(5)  # Adjust as needed for page load times
+        time.sleep(1)  # Adjust as needed for page load times
         driver.save_screenshot(output_file)
     except:
         pass
     os.remove(html_file)
     driver.quit()
 
-def main(html_files):
+def handle_html_files(html_files):
     """Converts a list of HTML files to PNG images using concurrent processing."""
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = []
@@ -49,7 +79,6 @@ def main(html_files):
             
             output_file = html_file.replace('.html', '.png')
             output_file = output_file.replace('html', 'imgs')
-            print(output_file)
             if os.path.isfile(output_file):
                 continue
             futures.append(executor.submit(convert_html_to_png, html_file, output_file))
@@ -60,57 +89,40 @@ def main(html_files):
             except Exception as e:
                 print(f"Error during conversion: {e}")
 
-def create_page(pdf, image_path):
-    fn_without_extension = os.path.splitext(os.path.basename(image_path))[0]
-    pdf.add_page()
-    pdf.set_font('Arial', 'B', 12)  # Set font: Arial, bold, 12pt
-    pdf.cell(0, 10, fn_without_extension, 0, 1, 'C')  # Label the chart
-    pdf.image(image_path, w=190, y=30)
+def handle_png_files(image_dir, output_pdf, flag):
+    # Get the list of image paths
+    image_paths = [os.path.join(image_dir, img) for img in os.listdir(image_dir) if img.endswith(('png', 'jpg', 'jpeg'))]
+    specific_paths = [f for f in image_paths if flag in f]
+
+    with ThreadPoolExecutor() as executor:
+        images_converted = list(executor.map(load_and_convert_image, specific_paths))
+
+    # Save the first image, appending the rest
+    images_converted[0].save(output_pdf, save_all=True, append_images=images_converted[1:])
 
 if __name__ == "__main__":
 
     start_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     html_files = sorted(glob.glob(f'html/*.html'))
-    main(html_files)
+    handle_html_files(html_files)
 
     today_str = datetime.today().strftime('%Y-%m-%d')
 
-    imagelist = sorted(glob.glob(f'imgs/*.png'))
-
-    pdf1 = FPDF()
-    pdf2 = FPDF()
-    # Use ThreadPoolExecutor to process images in parallel
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = [executor.submit(process_image, image_path) for image_path in imagelist]
-        
-        for future in concurrent.futures.as_completed(futures):
-            try:
-                image_path, is_trade_date, is_pub_date = future.result()
-                fn_without_extension = os.path.splitext(os.path.basename(image_path))[0]
-                if is_trade_date:
-                    pdf1.add_page()
-                    pdf1.set_font('Arial', 'B', 12)  # Set font: Arial, bold, 12pt
-                    pdf1.cell(0, 10, fn_without_extension, 0, 1, 'C')  # Label the chart
-                    pdf1.image(image_path, w=190, y=30)
-                elif is_pub_date:
-                    pdf2.add_page()
-                    pdf2.set_font('Arial', 'B', 12)  # Set font: Arial, bold, 12pt
-                    pdf2.cell(0, 10, fn_without_extension, 0, 1, 'C')  # Label the chart
-                    pdf2.image(image_path, w=190, y=30)
-                os.remove(image_path)  # Remove the processed image
-            except Exception as e:
-                print(f"Error processing image: {e}")
-
     file_name = f"{today_str}_insider_trading_copying (trade dates).pdf"
     file_name2 = f"{today_str}_insider_trading_copying (publish dates).pdf"
-    
-    pdf1.output(file_name, "F")
-    pdf2.output(file_name2, "F")
 
-    old_html_files = glob.glob('hmtl/*.html')
+    img_dir = os.path.join(os.getcwd(), 'imgs')
+    handle_png_files(img_dir, file_name, 'trade_dates')
+    handle_png_files(img_dir, file_name2, 'pub_dates')
+
+    old_html_files = glob.glob('html/*.html')
     for f in old_html_files:
         os.remove(f)
+
+    # old_png_files = glob.glob('imgs/*.png')
+    # for f in old_png_files:
+    #     os.remove(f)
 
     end_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
