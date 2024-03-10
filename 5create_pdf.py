@@ -120,9 +120,9 @@ if __name__ == "__main__":
     for f in old_html_files:
         os.remove(f)
 
-    # old_png_files = glob.glob('imgs/*.png')
-    # for f in old_png_files:
-    #     os.remove(f)
+    old_png_files = glob.glob('imgs/*.png')
+    for f in old_png_files:
+        os.remove(f)
 
     end_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
